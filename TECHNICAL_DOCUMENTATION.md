@@ -14,61 +14,71 @@
 
 ### 2.1 システム構成図
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                     PDF入力（整備マニュアル.pdf）                    │
-└───────────────────────────┬─────────────────────────────────┘
-                            │
-                            ▼
-┌─────────────────────────────────────────────────────────────┐
-│                   Stage 1: 高速スクリーニング                        │
-│  ┌─────────────┐ ┌──────────────┐ ┌──────────────┐      │
-│  │ テキスト密度計算 │ │ 図番号パターン検出│ │ 大画像の検出   │      │
-│  │  (0.1秒/頁)  │ │ 図1-1, 表2-3等│ │ 50000px²以上 │      │
-│  └─────────────┘ └──────────────┘ └──────────────┘      │
-└───────────────────────────┬─────────────────────────────────┘
-                            │
-                            ▼
-                    ┌───────────────┐
-                    │ 純粋なテキスト？ │
-                    └───────┬───────┘
-                       Yes／ │ ＼No
-                        ／   │   ＼
-                       ▼     │    ▼
-              ┌──────────┐  │  ┌────────────────────────────┐
-              │テキスト処理│  │  │ Stage 2: 詳細分析          │
-              │ (高速)   │  │  │ ・PyMuPDF表検出           │
-              └──────────┘  │  │ ・矩形/線分カウント        │
-                            │  │ ・STEPパターン検出        │
-                            │  └────────────┬───────────────┘
-                            │               │
-                            │               ▼
-                            │      ┌─────────────────┐
-                            │      │ Stage 3: 判定   │
-                            │      └────────┬────────┘
-                            │               │
-        ┌───────────────────┼───────────────┴───────────────────┐
-        │                   │                                   │
-        ▼                   ▼                                   ▼
-┌───────────────┐ ┌──────────────────┐             ┌─────────────────┐
-│  単純な表      │ │ 複雑な表/フロー図  │             │   混在型         │
-│構造化データ抽出│ │   画像化+ML解析   │             │ ハイブリッド処理  │
-│ (コスト:0.3)  │ │  (コスト:1.0-1.5) │             │  (コスト:0.7)    │
-└───────────────┘ └──────────────────┘             └─────────────────┘
+```mermaid
+flowchart TD
+    Start[PDF入力<br/>整備マニュアル.pdf] --> Stage1[Stage 1: 高速スクリーニング]
+    
+    Stage1 --> S1_1[テキスト密度計算<br/>0.1秒/頁]
+    Stage1 --> S1_2[図番号パターン検出<br/>図1-1, 表2-3等]
+    Stage1 --> S1_3[大画像の検出<br/>50000px²以上]
+    
+    S1_1 & S1_2 & S1_3 --> Decision1{純粋なテキスト？}
+    
+    Decision1 -->|Yes| TextProcess[テキスト処理<br/>高速]
+    Decision1 -->|No| Stage2[Stage 2: 詳細分析]
+    
+    Stage2 --> S2_1[PyMuPDF表検出]
+    Stage2 --> S2_2[矩形/線分カウント]
+    Stage2 --> S2_3[STEPパターン検出]
+    
+    S2_1 & S2_2 & S2_3 --> Stage3[Stage 3: 判定]
+    
+    Stage3 --> Method1[単純な表<br/>構造化データ抽出<br/>コスト:0.3]
+    Stage3 --> Method2[複雑な表/フロー図<br/>画像化+ML解析<br/>コスト:1.0-1.5]
+    Stage3 --> Method3[混在型<br/>ハイブリッド処理<br/>コスト:0.7]
+    
+    TextProcess --> Output[出力結果]
+    Method1 --> Output
+    Method2 --> Output
+    Method3 --> Output
+    
+    Output --> Result[テキスト: 4ページ<br/>構造化データ: 0ページ<br/>画像: 23ページ<br/>処理時間: 12.57秒]
+    
+    style Start fill:#e1f5fe
+    style Stage1 fill:#fff3e0
+    style Stage2 fill:#fff3e0
+    style Stage3 fill:#fff3e0
+    style Result fill:#c8e6c9
 ```
 
 ### 2.2 モジュール構成
 
-```
-preprocessing_optimizer/
-├── main.py                    # メインエントリーポイント
-├── core/
-│   ├── practical_optimizer.py # 最適化エンジン
-│   ├── document_parser_gemini.py # Gemini統合
-│   ├── smart_page_analyzer.py # ページ分析
-│   └── text_processor.py      # テキスト処理
-└── config/
-    └── config.py             # 設定管理
+```mermaid
+graph TD
+    subgraph "preprocessing_optimizer/"
+        Main[main.py<br/>メインエントリーポイント]
+        
+        subgraph "core/"
+            PO[practical_optimizer.py<br/>最適化エンジン]
+            DPG[document_parser_gemini.py<br/>Gemini統合]
+            SPA[smart_page_analyzer.py<br/>ページ分析]
+            TP[text_processor.py<br/>テキスト処理]
+        end
+        
+        subgraph "config/"
+            Config[config.py<br/>設定管理]
+        end
+        
+        Main --> PO
+        PO --> SPA
+        PO --> DPG
+        PO --> TP
+        PO --> Config
+    end
+    
+    style Main fill:#ffeb3b
+    style PO fill:#4caf50
+    style Config fill:#2196f3
 ```
 
 ## 3. コア処理ロジック
@@ -135,28 +145,35 @@ preprocessing_optimizer/
 #### 段階3: 処理方法決定（`_determine_processing`）
 
 **判定ロジックツリー:**
-```
-1. actual_figure == True?
-   YES → 画像化優先
-   NO → 次へ
 
-2. text_density > 0.7 AND table_count == 0 AND rect_count < 2?
-   YES → PURE_TEXT + TEXT_ONLY
-   NO → 次へ
-
-3. table_count > 0?
-   YES → 
-   - total_cells > 20 → COMPLEX_TABLE + IMAGE_WITH_OCR
-   - total_cells <= 20 → SIMPLE_TABLE + STRUCTURED_EXTRACTION
-   NO → 次へ
-
-4. rect_count >= 3 AND (step_pattern OR line_count > 5)?
-   YES → FLOWCHART + IMAGE_WITH_ANALYSIS
-   NO → 次へ
-
-5. large_images_count > 0?
-   YES → DIAGRAM + IMAGE_WITH_ANALYSIS
-   NO → PURE_TEXT + TEXT_ONLY (デフォルト)
+```mermaid
+flowchart TD
+    Start[ページ分析結果] --> Q1{actual_figure == True?}
+    Q1 -->|YES| Priority[画像化優先]
+    Q1 -->|NO| Q2{text_density > 0.7<br/>AND table_count == 0<br/>AND rect_count < 2?}
+    
+    Q2 -->|YES| PT[PURE_TEXT<br/>TEXT_ONLY]
+    Q2 -->|NO| Q3{table_count > 0?}
+    
+    Q3 -->|YES| Q3a{total_cells > 20?}
+    Q3a -->|YES| CT[COMPLEX_TABLE<br/>IMAGE_WITH_OCR]
+    Q3a -->|NO| ST[SIMPLE_TABLE<br/>STRUCTURED_EXTRACTION]
+    
+    Q3 -->|NO| Q4{rect_count >= 3<br/>AND<br/>step_pattern OR line_count > 5?}
+    
+    Q4 -->|YES| FC[FLOWCHART<br/>IMAGE_WITH_ANALYSIS]
+    Q4 -->|NO| Q5{large_images_count > 0?}
+    
+    Q5 -->|YES| DG[DIAGRAM<br/>IMAGE_WITH_ANALYSIS]
+    Q5 -->|NO| Default[PURE_TEXT<br/>TEXT_ONLY<br/>デフォルト]
+    
+    style Priority fill:#ffcccc
+    style PT fill:#ccffcc
+    style CT fill:#ffcc99
+    style ST fill:#ccffff
+    style FC fill:#ffccff
+    style DG fill:#ffffcc
+    style Default fill:#e0e0e0
 ```
 
 ### 3.2 並列処理アーキテクチャ
@@ -164,6 +181,43 @@ preprocessing_optimizer/
 **実装方式:**
 ```python
 ThreadPoolExecutor(max_workers=min(cpu_count(), 8))
+```
+
+**並列処理フロー:**
+
+```mermaid
+sequenceDiagram
+    participant Main as メインスレッド
+    participant Pool as ThreadPoolExecutor
+    participant W1 as ワーカー1
+    participant W2 as ワーカー2
+    participant Wn as ワーカーN
+    
+    Main->>Pool: PDFページタスク投入
+    Pool->>W1: ページ1割り当て
+    Pool->>W2: ページ2割り当て
+    Pool->>Wn: ページN割り当て
+    
+    par 並列処理
+        W1->>W1: 独自PDF開く
+        W1->>W1: ページ分析
+        W1->>W1: 処理実行
+        W1-->>Pool: 結果返却
+    and
+        W2->>W2: 独自PDF開く
+        W2->>W2: ページ分析
+        W2->>W2: 処理実行
+        W2-->>Pool: 結果返却
+    and
+        Wn->>Wn: 独自PDF開く
+        Wn->>Wn: ページ分析
+        Wn->>Wn: 処理実行
+        Wn-->>Pool: 結果返却
+    end
+    
+    Pool-->>Main: 全結果収集
+    Main->>Main: ページ番号順ソート
+    Main->>Main: 最終結果生成
 ```
 
 **並列化戦略:**
