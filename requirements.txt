@@ -1,0 +1,24 @@
+# PDF Processing
+PyMuPDF==1.23.8
+Pillow==10.1.0
+
+# Japanese Text Processing
+janome==0.5.0
+
+# Document Loading
+langchain==0.1.0
+langchain-community==0.1.0
+pypdf==3.17.4
+python-docx==1.1.0
+docx2txt==0.8
+
+# Database
+sqlalchemy==2.0.23
+psycopg2-binary==2.9.9
+pgvector==0.2.4
+
+# Gemini
+google-generativeai==0.8.3
+
+# Utilities
+python-dotenv==1.0.0

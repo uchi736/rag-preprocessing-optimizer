@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(mkdir:*)",
+      "Bash(move EXECUTIVE_SUMMARY.md docsarchive )",
+      "Bash(move FINAL_REPORT_WITH_FIGURE_DETECTION.md docsarchive )",
+      "Bash(move architecture.md docsarchive )",
+      "Bash(move TECHNICAL_LOGIC_DOCUMENTATION.md docsarchive )",
+      "Bash(move FLOWCHART_LOGIC.md docsarchive )",
+      "Bash(move:*)",
+      "Bash(move OPTIMIZATION_IMPROVEMENTS.md docsarchive )",
+      "Bash(mv:*)",
+      "Bash(git init:*)",
+      "Bash(git add:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
