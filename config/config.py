@@ -58,3 +58,18 @@ class Config:
     enable_doc_summarization: bool = os.getenv("ENABLE_DOC_SUMMARIZATION", "true").lower() == "true"
     enable_metadata_enrichment: bool = os.getenv("ENABLE_METADATA_ENRICHMENT", "true").lower() == "true"
     confidence_threshold: float = float(os.getenv("CONFIDENCE_THRESHOLD", 0.7))
+    
+    # 図表検出設定（改良版）
+    figure_detection_strict_mode: bool = os.getenv("FIGURE_DETECTION_STRICT_MODE", "true").lower() == "true"
+    figure_min_confidence: int = int(os.getenv("FIGURE_MIN_CONFIDENCE", 30))
+    enable_flowchart_detection: bool = os.getenv("ENABLE_FLOWCHART_DETECTION", "true").lower() == "true"
+    enable_context_analysis: bool = os.getenv("ENABLE_CONTEXT_ANALYSIS", "false").lower() == "true"
+    
+    # 図表検出の閾値設定
+    min_rects_for_diagram: int = int(os.getenv("MIN_RECTS_FOR_DIAGRAM", 5))
+    min_lines_for_diagram: int = int(os.getenv("MIN_LINES_FOR_DIAGRAM", 4))
+    min_arrows_for_flowchart: int = int(os.getenv("MIN_ARROWS_FOR_FLOWCHART", 2))
+    min_combined_shapes: int = int(os.getenv("MIN_COMBINED_SHAPES", 8))
+    min_figure_area_ratio: float = float(os.getenv("MIN_FIGURE_AREA_RATIO", 0.05))
+    embedded_image_min_size: int = int(os.getenv("EMBEDDED_IMAGE_MIN_SIZE", 100))
+    flowchart_confidence_boost: int = int(os.getenv("FLOWCHART_CONFIDENCE_BOOST", 20))
