@@ -124,17 +124,51 @@ class SmartPageAnalyzer:
             result['reasons'].append(f"図形検出でエラー: {str(e)[:50]}")
             pass
         
-        # 3. テキストパターンから図の可能性を判定
+        # 3. テキストパターンから図の可能性を判定（改良版：視覚要素必須）
         text = page.get_text()
         detected_keywords = []
         for keyword in self.figure_keywords:
             if keyword in text:
                 detected_keywords.append(keyword)
+        
+        # 視覚要素の存在確認（誤検出防止）
+        has_visual_element = False
+        
+        # 図形要素があるか
+        if 'figure_details' in result and result['figure_details'].get('total', 0) > 0:
+            has_visual_element = True
+        
+        # 埋め込み画像があるか（後で判定されるが、ここでも事前チェック）
+        try:
+            image_list = page.get_images(full=True)
+            if image_list:
+                for img in image_list:
+                    xref = img[0]
+                    try:
+                        base_image = page.parent.extract_image(xref)
+                        width = base_image.get("width", 0)
+                        height = base_image.get("height", 0)
+                        if width > 100 and height > 100:
+                            has_visual_element = True
+                            break
+                    except:
+                        pass
+        except:
+            pass
+        
+        # テーブルがあるか
+        if result.get('has_table'):
+            has_visual_element = True
                 
-        if detected_keywords:
+        # キーワードと視覚要素の両方がある場合のみ図表判定
+        if detected_keywords and has_visual_element:
             result['has_figure'] = True
-            result['reasons'].append(f"図のキーワードを検出: {', '.join(detected_keywords[:3])}")
+            result['reasons'].append(f"図のキーワードを検出（視覚要素あり）: {', '.join(detected_keywords[:3])}")
             result['confidence'] += 20
+        elif detected_keywords and not has_visual_element:
+            # キーワードのみ = 参照文の可能性が高い
+            result['reasons'].append(f"図表への参照文を検出（視覚要素なし）: {', '.join(detected_keywords[:3])}")
+            # has_figureはFalseのまま（誤検出防止）
         
         # 4. レイアウトの複雑さを判定（テキストブロックの配置）
         blocks = page.get_text("dict")['blocks']
@@ -167,11 +201,25 @@ class SmartPageAnalyzer:
                 
         result['text_ratio'] = text_area / page_area if page_area > 0 else 0
         
-        # テキスト比率が低い場合は図が含まれる可能性
+        # テキスト比率が低い場合は図が含まれる可能性（ただし視覚要素も必要）
         if result['text_ratio'] < 0.5:
-            result['has_figure'] = True
-            result['reasons'].append(f"テキスト比率が低い（{result['text_ratio']:.1%}）")
-            result['confidence'] += 15
+            # 視覚要素の再確認
+            has_any_visual = (
+                result.get('has_table', False) or
+                result.get('has_embedded_image', False) or
+                result.get('has_diagram', False) or
+                (result.get('figure_details', {}).get('total', 0) > 0)
+            )
+            
+            if has_any_visual:
+                # 視覚要素があってテキスト比率が低い = 図表の可能性高
+                result['has_figure'] = True
+                result['reasons'].append(f"テキスト比率が低い（{result['text_ratio']:.1%}）＋視覚要素あり")
+                result['confidence'] += 15
+            else:
+                # テキスト比率が低いだけ = 空白ページや余白の可能性
+                result['reasons'].append(f"テキスト比率が低い（{result['text_ratio']:.1%}）が視覚要素なし")
+                # has_figureはFalseのまま
         
         # 6. 特定のパターン検出（拡張版）
         step_pattern = re.compile(r'(?:STEP|ステップ|手順|Phase|フェーズ|工程)\s*[0-9０-９]+|[①②③④⑤⑥⑦⑧⑨⑩]')

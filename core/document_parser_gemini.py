@@ -5,6 +5,10 @@ from typing import List, Dict, Any, Tuple
 from PIL import Image
 import io
 import google.generativeai as genai
+from dotenv import load_dotenv
+
+# .envファイルを読み込み
+load_dotenv()
 
 class DocumentParser:
     def __init__(self, config, image_output_dir: str = "output/images"):
