@@ -6,7 +6,7 @@
 日本語技術文書に特化したPDF前処理システム。図表を含むページを自動検出し、選択的に画像化することで、RAGシステムの精度向上とコスト最適化を実現。
 
 ### 1.2 主要コンポーネント
-- **PracticalPageAnalyzer**: ページ分析エンジン
+- **PracticalPageAnalyzer**: 統合ページ分析エンジン（視覚要素チェック機能統合済み）
 - **PracticalDocumentProcessor**: ドキュメント処理エンジン
 - **PracticalConfig**: 設定管理
 
@@ -57,11 +57,11 @@ flowchart TD
 graph TD
     subgraph "preprocessing_optimizer/"
         Main[main.py<br/>メインエントリーポイント]
+        Process[process.py<br/>統一コマンドインターフェース]
         
         subgraph "core/"
-            PO[practical_optimizer.py<br/>最適化エンジン]
+            PO[practical_optimizer.py<br/>統合最適化エンジン<br/>（視覚要素チェック機能統合）]
             DPG[document_parser_gemini.py<br/>Gemini統合]
-            SPA[smart_page_analyzer.py<br/>ページ分析]
             TP[text_processor.py<br/>テキスト処理]
         end
         
@@ -69,14 +69,15 @@ graph TD
             Config[config.py<br/>設定管理]
         end
         
+        Process --> Main
         Main --> PO
-        PO --> SPA
         PO --> DPG
         PO --> TP
         PO --> Config
     end
     
     style Main fill:#ffeb3b
+    style Process fill:#90caf9
     style PO fill:#4caf50
     style Config fill:#2196f3
 ```
@@ -138,11 +139,27 @@ graph TD
    # 矩形(rect)、線(line)、曲線(curve)をカウント
    ```
 
-3. **テキストパターン分析**
+3. **視覚要素の存在確認（統合機能）**
+   ```python
+   has_visual_element = (
+       rect_count > 0 or 
+       line_count > 0 or 
+       len(tables) > 0
+   )
+   # 埋め込み画像の確認
+   for img in page.get_images():
+       if width > 100 and height > 100:
+           has_visual_element = True
+   ```
+
+4. **テキストパターン分析**
    - ステップパターン: `(STEP|ステップ|手順)\s*[0-9０-９①-⑩]`
    - 番号リスト: `[①-⑩]|[1-9]\.\s`
 
 #### 段階3: 処理方法決定（`_determine_processing`）
+
+**視覚要素チェック統合:**
+視覚要素がない場合は、図番号キーワードが存在しても参照文として扱い、テキスト処理を行います。これにより誤検知を防止し、処理精度を向上させています。
 
 **信頼度（Confidence）の計算方法:**
 
@@ -367,7 +384,28 @@ END ALGORITHM
 - メモリ不足時は自動的にリソース解放を試行
 - 中断時（Ctrl+C）は適切にクリーンアップ
 
-## 8. 拡張ポイント
+## 8. 最近の改善点
+
+### 8.1 コードベース最適化（2025-08-15実施）
+
+**実施内容:**
+1. **重複コードの削除**
+   - SmartPageAnalyzerの機能をPracticalPageAnalyzerに統合
+   - UnifiedFigureDetector（未使用）を削除
+   - diagnostic_tool.py（診断専用）を削除
+   - 結果：806行のコード削減（約25%削減）
+
+2. **誤検知防止機能の統合**
+   - 視覚要素チェック機能を_detailed_analysisメソッドに統合
+   - 図番号参照文と実際の図表を正確に区別
+   - 処理精度の向上
+
+3. **アーキテクチャのシンプル化**
+   - 単一の分析エンジンに統合
+   - 保守性の向上
+   - 処理の一貫性確保
+
+## 9. 拡張ポイント
 
 ### 8.1 新しい図表パターンの追加
 ```python

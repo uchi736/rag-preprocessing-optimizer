@@ -16,9 +16,29 @@
       "Bash(git remote add:*)",
       "Bash(git branch:*)",
       "Bash(git push:*)",
-      "Bash(python test:*)"
+      "Bash(python test:*)",
+      "Bash(python:*)",
+      "Bash(powershell:*)",
+      "Bash(dir:*)",
+      "Bash(git log:*)",
+      "Bash(rm:*)",
+      "Bash(git restore:*)",
+      "mcp__serena__activate_project",
+      "mcp__serena__list_dir",
+      "mcp__serena__get_symbols_overview",
+      "mcp__serena__find_referencing_symbols",
+      "mcp__serena__search_for_pattern",
+      "mcp__serena__find_symbol",
+      "mcp__serena__think_about_collected_information",
+      "mcp__serena__write_memory",
+      "Bash(git rm:*)"
     ],
     "deny": [],
     "ask": []
-  }
+  },
+  "enabledMcpjsonServers": [
+    "context7",
+    "sequential-thinking",
+    "serena"
+  ]
 }
