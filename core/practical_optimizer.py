@@ -31,7 +31,7 @@ class ProcessingMethod(Enum):
     """処理方法の定義"""
     TEXT_ONLY = "text_only"              # テキスト抽出のみ
     STRUCTURED_EXTRACTION = "structured"  # 構造化データ抽出
-    IMAGE_WITH_OCR = "image_ocr"        # 画像化+OCR
+    IMAGE_WITH_GEMINI = "image_gemini"  # 画像化+Gemini解析
     IMAGE_WITH_ANALYSIS = "image_ml"     # 画像化+ML解析
     HYBRID = "hybrid"                    # ハイブリッド
 
@@ -315,7 +315,7 @@ class PracticalPageAnalyzer:
         if features.get('actual_figure', False):
             # 表の可能性をチェック
             if detailed_result['table_count'] > 0:
-                return PageType.COMPLEX_TABLE, ProcessingMethod.IMAGE_WITH_OCR, 0.85
+                return PageType.COMPLEX_TABLE, ProcessingMethod.IMAGE_WITH_GEMINI, 0.85
             # フロー図または図の可能性
             elif detailed_result['rect_count'] > 0 or features['large_images_count'] > 0:
                 return PageType.FLOWCHART, ProcessingMethod.IMAGE_WITH_ANALYSIS, 0.8
@@ -332,7 +332,7 @@ class PracticalPageAnalyzer:
         if detailed_result['table_count'] > 0:
             total_cells = detailed_result['total_cells']
             if total_cells > self.config.complex_table_cell_threshold:
-                return PageType.COMPLEX_TABLE, ProcessingMethod.IMAGE_WITH_OCR, 0.85
+                return PageType.COMPLEX_TABLE, ProcessingMethod.IMAGE_WITH_GEMINI, 0.85
             else:
                 return PageType.SIMPLE_TABLE, ProcessingMethod.STRUCTURED_EXTRACTION, 0.8
         
@@ -357,7 +357,7 @@ class PracticalPageAnalyzer:
         cost_map = {
             ProcessingMethod.TEXT_ONLY: self.config.text_processing_cost,
             ProcessingMethod.STRUCTURED_EXTRACTION: self.config.structured_extraction_cost,
-            ProcessingMethod.IMAGE_WITH_OCR: self.config.image_processing_cost,
+            ProcessingMethod.IMAGE_WITH_GEMINI: self.config.image_processing_cost,
             ProcessingMethod.IMAGE_WITH_ANALYSIS: self.config.image_processing_cost * 1.5,
             ProcessingMethod.HYBRID: (self.config.text_processing_cost + 
                                     self.config.image_processing_cost) * 0.7
@@ -412,7 +412,7 @@ class PracticalDocumentProcessor:
             # サマリー更新
             if analysis['processing_method'] == ProcessingMethod.TEXT_ONLY:
                 results['summary']['text_pages'] += 1
-            elif analysis['processing_method'] in [ProcessingMethod.IMAGE_WITH_OCR, 
+            elif analysis['processing_method'] in [ProcessingMethod.IMAGE_WITH_GEMINI, 
                                                   ProcessingMethod.IMAGE_WITH_ANALYSIS]:
                 results['summary']['image_pages'] += 1
             else:
@@ -490,7 +490,7 @@ class PracticalDocumentProcessor:
                             results['summary']['skipped_pages'] += 1
                         elif page_result['processing_method'] == ProcessingMethod.TEXT_ONLY.value:
                             results['summary']['text_pages'] += 1
-                        elif page_result['processing_method'] in [ProcessingMethod.IMAGE_WITH_OCR.value, 
+                        elif page_result['processing_method'] in [ProcessingMethod.IMAGE_WITH_GEMINI.value, 
                                                                   ProcessingMethod.IMAGE_WITH_ANALYSIS.value]:
                             results['summary']['image_pages'] += 1
                         else:
@@ -588,7 +588,7 @@ class PracticalDocumentProcessor:
                         pass
         
         # 画像処理
-        if method in [ProcessingMethod.IMAGE_WITH_OCR, ProcessingMethod.IMAGE_WITH_ANALYSIS, 
+        if method in [ProcessingMethod.IMAGE_WITH_GEMINI, ProcessingMethod.IMAGE_WITH_ANALYSIS, 
                      ProcessingMethod.HYBRID]:
             # 画像化
             dpi_mult = getattr(self.config, 'image_dpi_multiplier', 2.0)

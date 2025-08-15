@@ -144,7 +144,6 @@ preprocessing_optimizer/
 ├── .env                       # API設定（自動読み込み）
 ├── core/
 │   ├── practical_optimizer.py # 最適化エンジン
-│   ├── document_parser_gemini.py # Gemini 2.0 Flash統合
 │   ├── smart_page_analyzer.py # ページ分析（誤検知防止機能付き）
 │   └── text_processor.py      # テキスト処理
 └── config/
@@ -201,7 +200,7 @@ Gemini 2.0 Flashによる画像解析結果は以下の場所に保存されま�
 |------------|---------|------|
 | 純粋なテキスト | テキスト抽出のみ | 高速検索 |
 | 単純な表 | 構造化データ抽出 | データ分析 |
-| 複雑な表 | 画像化+OCR | レイアウト保持 |
+| 複雑な表 | 画像化+Gemini解析 | レイアウト保持 |
 | フロー図 | 画像化+ML解析 | 内容理解 |
 | 図番号付きページ | 優先的に画像化 | 重要情報保持 |
 

@@ -66,8 +66,8 @@ def extract_text_from_summary(summary_path: str, output_path: Optional[str] = No
         # 画像の場合はパスを記載
         if 'image_path' in page_info:
             all_text.append(f"\n[画像: {page_info['image_path']}]\n")
-            if page_info['processing_method'] == 'image_with_ocr':
-                all_text.append("（OCR処理が必要）\n")
+            if page_info['processing_method'] == 'image_gemini':
+                all_text.append("（Gemini解析対象）\n")
             elif page_info['processing_method'] == 'image_with_analysis':
                 all_text.append("（AI画像解析が必要）\n")
             
@@ -146,7 +146,7 @@ def extract_text_from_pdf(pdf_path: str, output_path: Optional[str] = None,
                             all_text.append("\n")
             
             # 画像ページの場合
-            if page_info['processing_method'] in ['image_with_ocr', 'image_with_analysis']:
+            if page_info['processing_method'] in ['image_gemini', 'image_with_analysis']:
                 all_text.append(f"\n[注: ページ{page_num}は画像処理が必要です]\n")
         
         print(f"処理完了: {len(results['processed_pages'])}ページ")

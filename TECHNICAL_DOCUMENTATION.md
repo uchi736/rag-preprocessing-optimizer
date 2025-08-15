@@ -168,7 +168,7 @@ graph TD
 |-------------|---------|--------|
 | 純粋なテキスト | TEXT_ONLY | 0.9 |
 | 単純な表 | STRUCTURED_EXTRACTION | 0.8 |
-| 複雑な表 | IMAGE_WITH_OCR | 0.85 |
+| 複雑な表 | IMAGE_WITH_GEMINI | 0.85 |
 | フローチャート | IMAGE_WITH_ANALYSIS | 0.75〜0.8 |
 | 図・ダイアグラム | IMAGE_WITH_ANALYSIS | 0.75〜0.8 |
 | 混在型 | HYBRID | 0.6 |
@@ -186,7 +186,7 @@ flowchart TD
     Q2 -->|NO| Q3{table_count > 0?}
     
     Q3 -->|YES| Q3a{total_cells > 20?}
-    Q3a -->|YES| CT[COMPLEX_TABLE<br/>IMAGE_WITH_OCR]
+    Q3a -->|YES| CT[COMPLEX_TABLE<br/>IMAGE_WITH_GEMINI]
     Q3a -->|NO| ST[SIMPLE_TABLE<br/>STRUCTURED_EXTRACTION]
     
     Q3 -->|NO| Q4{rect_count >= 3<br/>AND<br/>step_pattern OR line_count > 5?}
