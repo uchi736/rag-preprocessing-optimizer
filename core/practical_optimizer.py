@@ -255,7 +255,7 @@ class PracticalPageAnalyzer:
         }
     
     def _detailed_analysis(self, page: fitz.Page) -> Dict:
-        """詳細分析"""
+        """詳細分析（SmartPageAnalyzerの優れた機能を統合）"""
         # PyMuPDFの表検出
         try:
             tables = list(page.find_tables())
@@ -275,27 +275,58 @@ class PracticalPageAnalyzer:
             tables = []
             table_info = []
         
-        # 図形要素の分析
+        # 図形要素の分析（改良版）
         drawings = list(page.get_drawings())
         rect_count = 0
         line_count = 0
+        curve_count = 0
+        arrow_patterns = 0
         
         for d in drawings:
-            if d.get('type') in ['f', 's']:  # filled or stroked
-                rect = d.get('rect')
-                if rect:
-                    rect_count += 1
+            d_type = d.get('type')
+            if d_type == 'r':  # rectangle
+                rect_count += 1
+            elif d_type == 'l':  # line
+                line_count += 1
+            elif d_type == 'c':  # curve
+                curve_count += 1
             
+            # 矢印パターンの簡易検出
             items = d.get('items', [])
-            for item in items:
-                if isinstance(item, tuple) and item[0] == 'l':
-                    line_count += 1
+            if len(items) > 2:  # 複数の線が接続
+                arrow_patterns += 1
         
-        # テキストパターンの分析
+        # 視覚要素の存在確認（SmartPageAnalyzerから統合）
+        has_visual_element = (
+            rect_count > 0 or 
+            line_count > 0 or 
+            len(tables) > 0
+        )
+        
+        # 埋め込み画像の確認
+        significant_images = 0
+        try:
+            image_list = page.get_images(full=True)
+            for img in image_list:
+                xref = img[0]
+                try:
+                    base_image = page.parent.extract_image(xref)
+                    width = base_image.get("width", 0)
+                    height = base_image.get("height", 0)
+                    if width > 100 and height > 100:  # 100px以上を有意な画像とする
+                        significant_images += 1
+                        has_visual_element = True
+                except:
+                    pass
+        except:
+            pass
+        
+        # テキストパターンの分析（拡張版）
         text = page.get_text()
         import re
-        has_step_pattern = bool(re.search(r'(STEP|ステップ|手順)\s*[0-9０-９①-⑩]', text))
+        has_step_pattern = bool(re.search(r'(STEP|ステップ|手順|Phase|フェーズ|工程)\s*[0-9０-９①-⑩]', text))
         has_number_list = bool(re.search(r'[①-⑩]|[1-9]\.\s', text))
+        has_arrow_text = len(re.findall(r'[→←↑↓⇒⇐⇑⇓➡⬅⬆⬇]', text)) >= 3
         
         return {
             'tables': table_info,
@@ -303,16 +334,28 @@ class PracticalPageAnalyzer:
             'total_cells': sum(t['cell_count'] for t in table_info),
             'rect_count': rect_count,
             'line_count': line_count,
+            'curve_count': curve_count,
+            'arrow_patterns': arrow_patterns,
             'has_step_pattern': has_step_pattern,
-            'has_number_list': has_number_list
+            'has_number_list': has_number_list,
+            'has_arrow_text': has_arrow_text,
+            'has_visual_element': has_visual_element,
+            'significant_images': significant_images
         }
     
     def _determine_processing(self, quick_result: Dict, detailed_result: Dict) -> Tuple[PageType, ProcessingMethod, float]:
-        """最適な処理方法の決定"""
+        """最適な処理方法の決定（視覚要素チェック統合）"""
         features = quick_result['features']
         
+        # 視覚要素がない場合は図表なしと判定（誤検知防止）
+        if not detailed_result.get('has_visual_element', False):
+            # キーワードのみの場合は参照文として扱う
+            if features.get('has_figure_number', False):
+                # 参照文はテキストとして処理
+                return PageType.PURE_TEXT, ProcessingMethod.TEXT_ONLY, 0.9
+        
         # 実際の図がある場合は優先的に画像化
-        if features.get('actual_figure', False):
+        if features.get('actual_figure', False) and detailed_result.get('has_visual_element', False):
             # 表の可能性をチェック
             if detailed_result['table_count'] > 0:
                 return PageType.COMPLEX_TABLE, ProcessingMethod.IMAGE_WITH_GEMINI, 0.85
