@@ -16,8 +16,15 @@ build/
 .env.local
 *.env
 
-# Output files
+# Output directories
 output/
+output_*/
+*_output/
+hybrid_output/
+region_output/
+test_output/
+
+# Output files
 *.pdf
 *.png
 *.jpg
@@ -37,11 +44,23 @@ Thumbs.db
 # Logs
 *.log
 
-# Test files
+# Test files and directories
 test_*.py
 *_test.py
+test_*/
+evaluation/
+test_manufacturing_pdfs/
+download_test_pdfs.py
 
 # Temporary files
 *.tmp
 *.temp
 .cache/
+
+# Documentation PDFs
+TECHNICAL_DOCUMENTATION.pdf
+PROJECT_SUMMARY.pdf
+
+# Analysis files
+COMPREHENSIVE_TEST_ANALYSIS.md
+*_ANALYSIS.md
