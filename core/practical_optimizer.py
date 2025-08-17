@@ -66,7 +66,7 @@ class PracticalConfig:
         if self.force_image_keywords is None:
             self.force_image_keywords = ['フロー図', 'ブロック図', '配線図', '回路図']
         if self.skip_page_patterns is None:
-            self.skip_page_patterns = ['目次', '索引', 'はじめに', '奥付']
+            self.skip_page_patterns = []  # スキップ機能を無効化
         if self.figure_number_patterns is None:
             # 日本語の図番号パターン
             self.figure_number_patterns = [
