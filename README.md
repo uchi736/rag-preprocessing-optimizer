@@ -9,7 +9,6 @@
 
 ## 🚀 特徴
 
-- **ハイブリッド処理**: 埋め込み画像は個別抽出、複雑な図表はページ全体画像化
 - **統一コマンド**: `python process.py`で全機能を実行可能
 - **高速処理**: 3段階判定システムにより、不要な処理をスキップ
 - **コスト最適化**: 画像のピンポイント抽出により、Gemini API使用量を30-50%削減
@@ -53,9 +52,6 @@ EOF
 ```bash
 # すべての形式で出力（デフォルト）
 python process.py input.pdf
-
-# ハイブリッド処理（画像個別抽出+図表ページ画像化）
-python -m core.hybrid_processor input.pdf --output hybrid_output
 
 # テキストのみ抽出
 python process.py input.pdf --format text
@@ -151,11 +147,7 @@ preprocessing_optimizer/
 ├── export_separated.py        # タイプ別分離エクスポート
 ├── .env                       # API設定（自動読み込み）
 ├── core/
-│   ├── practical_optimizer.py # 統合最適化エンジン
-│   ├── hybrid_processor.py    # ハイブリッド処理（画像個別抽出+ページ画像化）
-│   ├── region_based_processor.py # 領域ベース処理
-│   ├── region_gemini_processor.py # 領域切り出し+Gemini解析
-│   └── text_processor.py      # テキスト処理
+│   └── practical_optimizer.py # 統合最適化エンジン
 ├── prompts/
 │   ├── __init__.py           # プロンプト管理
 │   └── gemini_prompts.py     # Gemini用プロンプトテンプレート
