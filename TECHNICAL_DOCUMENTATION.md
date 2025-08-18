@@ -405,14 +405,269 @@ END ALGORITHM
    - 保守性の向上
    - 処理の一貫性確保
 
-## 9. 拡張ポイント
+## 9. コンポーネント関係図
 
-### 8.1 新しい図表パターンの追加
+### 9.1 クラス関係
+
+```mermaid
+classDiagram
+    class AdvancedRAGPreprocessor {
+        -config: PracticalConfig
+        -processor: PracticalDocumentProcessor
+        -stats: Dict
+        +process_pdf(pdf_path, output_dir, use_parallel)
+        +process_directory(directory, output_dir, use_parallel)
+        -_print_summary(results, roi_info)
+        -_print_overall_stats()
+    }
+
+    class PracticalDocumentProcessor {
+        -config: PracticalConfig
+        -analyzer: PracticalPageAnalyzer
+        -text_processor: JapaneseTextProcessor
+        +process_pdf(pdf_path, output_dir)
+        +process_pdf_parallel(pdf_path, output_dir)
+        -_process_page(page, page_num, analysis, output_dir)
+        -_process_single_page(pdf_path, page_num, output_dir)
+    }
+
+    class PracticalPageAnalyzer {
+        -config: PracticalConfig
+        -stats: Dict
+        +analyze_page(page, page_num)
+        -_quick_screening(page, page_num)
+        -_detailed_analysis(page, text)
+        -_determine_processing(features)
+        -_is_actual_figure(text, has_figure_number, has_reference)
+    }
+
+    class JapaneseTextProcessor {
+        -tokenizer: Tokenizer
+        -stop_words: Set
+        +is_japanese(text) bool
+        +tokenize(text, remove_stop_words) List
+        +normalize_text(text) str
+    }
+
+    class PracticalConfig {
+        +quick_text_density_threshold: float
+        +min_table_cells: int
+        +complex_table_cell_threshold: int
+        +figure_number_patterns: List~str~
+        +skip_page_patterns: List~str~
+        +image_dpi_multiplier: float
+    }
+
+    class PageType {
+        <<enumeration>>
+        PURE_TEXT
+        SIMPLE_TABLE
+        COMPLEX_TABLE
+        FLOWCHART
+        DIAGRAM
+        MIXED
+    }
+
+    class ProcessingMethod {
+        <<enumeration>>
+        TEXT_ONLY
+        STRUCTURED_EXTRACTION
+        IMAGE_WITH_GEMINI
+        IMAGE_WITH_ANALYSIS
+        HYBRID
+    }
+
+    AdvancedRAGPreprocessor --> PracticalDocumentProcessor
+    AdvancedRAGPreprocessor --> PracticalConfig
+    PracticalDocumentProcessor --> PracticalPageAnalyzer
+    PracticalDocumentProcessor --> JapaneseTextProcessor
+    PracticalDocumentProcessor --> PracticalConfig
+    PracticalPageAnalyzer --> PracticalConfig
+    PracticalPageAnalyzer ..> PageType
+    PracticalPageAnalyzer ..> ProcessingMethod
+```
+
+### 9.2 データフロー詳細
+
+```mermaid
+flowchart LR
+    subgraph Input
+        PDF[PDFファイル]
+        Config[設定ファイル]
+        CLI[CLIパラメータ]
+    end
+    
+    subgraph Processing
+        direction TB
+        Main[main.py]
+        Prep[AdvancedRAGPreprocessor]
+        Proc[PracticalDocumentProcessor]
+        Analyzer[PracticalPageAnalyzer]
+        
+        Main --> Prep
+        Prep --> Proc
+        Proc --> Analyzer
+    end
+    
+    subgraph "並列処理"
+        Thread1[スレッド1]
+        Thread2[スレッド2]
+        ThreadN[スレッドN]
+        
+        Proc --> Thread1
+        Proc --> Thread2
+        Proc --> ThreadN
+    end
+    
+    subgraph Output
+        Text[テキストファイル]
+        Images[画像ファイル]
+        JSON[処理結果JSON]
+        Stats[統計情報]
+    end
+    
+    PDF --> Main
+    Config --> Main
+    CLI --> Main
+    
+    Thread1 --> Text
+    Thread1 --> Images
+    Thread2 --> Text
+    Thread2 --> Images
+    ThreadN --> Text
+    ThreadN --> Images
+    
+    Proc --> JSON
+    Prep --> Stats
+```
+
+### 9.3 評価システムコンポーネント
+
+```mermaid
+graph TB
+    subgraph "評価システム"
+        RunEval[run_evaluation.py<br/>評価実行]
+        EvalFramework[evaluation_framework.py<br/>評価フレームワーク]
+        Metrics[metrics_calculator.py<br/>メトリクス計算]
+        SyntheticGen[synthetic_pdf_generator.py<br/>合成PDF生成]
+        
+        RunEval --> EvalFramework
+        EvalFramework --> Metrics
+        EvalFramework --> SyntheticGen
+        
+        subgraph "テストデータ"
+            Synthetic[合成PDF]
+            GroundTruth[正解データ]
+        end
+        
+        SyntheticGen --> Synthetic
+        SyntheticGen --> GroundTruth
+        
+        subgraph "評価結果"
+            Report[評価レポート]
+            Scores[スコア]
+        end
+        
+        Metrics --> Report
+        Metrics --> Scores
+    end
+```
+
+## 10. 処理フロー詳細
+
+### 10.1 メイン処理シーケンス
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant CLI as main.py
+    participant Prep as AdvancedRAGPreprocessor
+    participant Proc as PracticalDocumentProcessor
+    participant Analyzer as PracticalPageAnalyzer
+    participant TextProc as JapaneseTextProcessor
+    participant FS as ファイルシステム
+    
+    User->>CLI: python main.py input.pdf
+    CLI->>CLI: 引数解析
+    CLI->>Prep: AdvancedRAGPreprocessor(config)
+    
+    Prep->>Proc: process_pdf_parallel(pdf_path, output_dir)
+    
+    loop 各ページ（並列）
+        Proc->>Analyzer: analyze_page(page, page_num)
+        
+        Note over Analyzer: Stage 1: 高速スクリーニング
+        Analyzer->>Analyzer: _quick_screening()
+        
+        alt スキップページ
+            Analyzer-->>Proc: skip=true
+        else 詳細分析必要
+            Note over Analyzer: Stage 2: 詳細分析
+            Analyzer->>Analyzer: _detailed_analysis()
+            
+            Note over Analyzer: Stage 3: 処理方法決定
+            Analyzer->>Analyzer: _determine_processing()
+            
+            Analyzer-->>Proc: 処理方法と信頼度
+        end
+        
+        alt テキスト処理
+            Proc->>TextProc: normalize_text(text)
+            TextProc-->>Proc: 正規化済みテキスト
+            Proc->>FS: テキストファイル保存
+        else 画像処理
+            Proc->>Proc: get_pixmap(dpi_multiplier)
+            Proc->>FS: 画像ファイル保存
+        end
+    end
+    
+    Proc-->>Prep: 処理結果
+    Prep->>Prep: ROI計算
+    Prep->>FS: 結果JSON保存
+    Prep-->>CLI: 処理サマリー
+    CLI-->>User: 完了メッセージ
+```
+
+### 10.2 図表検出の詳細フロー
+
+```mermaid
+flowchart TD
+    Start[テキスト取得] --> CheckPattern{図番号パターン<br/>存在？}
+    
+    CheckPattern -->|No| NotFigure[図表なし<br/>return false]
+    CheckPattern -->|Yes| CheckRef{参照文<br/>パターン？}
+    
+    CheckRef -->|Yes| Reference[参照文として扱う<br/>return false]
+    CheckRef -->|No| CheckVisual{視覚要素<br/>存在？}
+    
+    CheckVisual -->|No| TextOnly[テキストのみ<br/>return false]
+    CheckVisual -->|Yes| CheckActual{実際の図番号<br/>パターン？}
+    
+    CheckActual -->|No| MaybeFigure[図表の可能性<br/>confidence: 60]
+    CheckActual -->|Yes| ActualFigure[実際の図表<br/>confidence: 80+]
+    
+    ActualFigure --> ImageProcess[画像化処理]
+    MaybeFigure --> DetailCheck{詳細チェック}
+    
+    DetailCheck -->|表構造| TableProcess[表として処理]
+    DetailCheck -->|フロー図| FlowProcess[フロー図として処理]
+    DetailCheck -->|その他| HybridProcess[ハイブリッド処理]
+    
+    style NotFigure fill:#ffcccc
+    style Reference fill:#ffcccc
+    style TextOnly fill:#ffcccc
+    style ActualFigure fill:#ccffcc
+    style ImageProcess fill:#ccffcc
+```
+
+## 11. 拡張ポイント
+
+### 11.1 新しい図表パターンの追加
 ```python
 config.figure_number_patterns.append(r'Chart\s*\d+')
 ```
 
-### 8.2 処理方法のカスタマイズ
+### 11.2 処理方法のカスタマイズ
 ```python
 class CustomProcessor(PracticalDocumentProcessor):
     def _process_page(self, page, page_num, analysis, output_dir):
@@ -420,7 +675,7 @@ class CustomProcessor(PracticalDocumentProcessor):
         pass
 ```
 
-### 8.3 出力形式の拡張
+### 11.3 出力形式の拡張
 - JSON-LD形式での構造化データ出力
 - GraphMLでのフロー図表現
 - マルチモーダルLLM用のプロンプト生成

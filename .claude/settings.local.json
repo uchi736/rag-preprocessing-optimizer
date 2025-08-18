@@ -31,7 +31,11 @@
       "mcp__serena__find_symbol",
       "mcp__serena__think_about_collected_information",
       "mcp__serena__write_memory",
-      "Bash(git rm:*)"
+      "Bash(git rm:*)",
+      "mcp__sequential-thinking__sequentialthinking",
+      "Bash(pip install:*)",
+      "Bash(gcloud auth:*)",
+      "mcp__serena__replace_symbol_body"
     ],
     "deny": [],
     "ask": []
