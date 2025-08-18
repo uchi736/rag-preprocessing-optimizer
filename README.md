@@ -15,6 +15,8 @@
 - **コスト最適化**: 画像のピンポイント抽出により、Gemini API使用量を30-50%削減
 - **高精度**: 図番号パターン検出により、重要な図表を見逃さない
 - **AI画像解析**: Gemini 1.5 Flashによる高度な画像・図表解析
+- **プロンプト管理**: 解析プロンプトを別ファイルで管理、保守性向上
+- **メモリ安全**: `get_drawings()`を使わない安定した実装
 - **効率的**: ページタイプに応じた最適な処理方法を自動選択
 - **日本語対応**: 「図1-1」「表2-3」などの日本語図番号を認識
 - **自動設定**: .envファイルからAPIキーを自動読み込み
@@ -154,6 +156,9 @@ preprocessing_optimizer/
 │   ├── region_based_processor.py # 領域ベース処理
 │   ├── region_gemini_processor.py # 領域切り出し+Gemini解析
 │   └── text_processor.py      # テキスト処理
+├── prompts/
+│   ├── __init__.py           # プロンプト管理
+│   └── gemini_prompts.py     # Gemini用プロンプトテンプレート
 ├── config/
 │   └── config.py             # 設定管理
 └── docs/

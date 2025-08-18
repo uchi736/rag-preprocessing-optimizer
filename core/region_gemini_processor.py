@@ -17,6 +17,14 @@ import io
 from core.region_based_processor import RegionBasedProcessor, FigureRegion
 from core.practical_optimizer import PracticalConfig
 
+# プロンプトをインポート
+try:
+    from prompts import get_prompt
+except ImportError:
+    # フォールバック用の簡易実装
+    def get_prompt(content_type: str, context: str = None) -> str:
+        return context if context else f"{content_type}を解析してください。"
+
 
 class RegionGeminiProcessor(RegionBasedProcessor):
     """
@@ -35,48 +43,6 @@ class RegionGeminiProcessor(RegionBasedProcessor):
         else:
             self.model = None
             print("警告: GEMINI_API_KEYが設定されていません")
-        
-        # プロンプトテンプレート
-        self.prompts = {
-            'table': """この表を詳細に解析してください。
-
-以下の形式で出力してください：
-1. 表の構造（行数、列数、ヘッダー）
-2. 表の内容を完全にMarkdown形式で再現
-3. 重要なデータポイントの要約
-
-必ずMarkdown形式の表として出力してください。""",
-            
-            'figure': """この図を詳細に解析してください。
-
-以下を含めて説明してください：
-1. 図の種類（フローチャート、ブロック図、グラフなど）
-2. 図に含まれる要素とその関係性
-3. 図が示す主要な情報やプロセス
-4. 図中のすべてのテキスト情報
-
-構造化された形式で出力してください。""",
-            
-            'image': """この画像を詳細に解析してください。
-
-以下を含めて説明してください：
-1. 画像の内容と種類
-2. 画像に含まれるテキスト情報（すべて抽出）
-3. 画像が伝える主要な情報
-4. 技術的な詳細があれば記載
-
-すべての情報を漏れなく抽出してください。""",
-            
-            'chart': """このグラフ/チャートを詳細に解析してください。
-
-以下の形式で出力してください：
-1. グラフの種類（棒グラフ、折れ線グラフ、円グラフなど）
-2. 軸ラベルと単位
-3. データポイントの値（可能な限り正確に）
-4. 主要な傾向やパターン
-
-データは可能な限り数値として抽出してください。"""
-        }
     
     def analyze_figure_with_gemini(self, image_data: bytes, figure_type: str, 
                                   caption: Optional[str] = None) -> Dict:
@@ -102,8 +68,8 @@ class RegionGeminiProcessor(RegionBasedProcessor):
             # 画像をPIL形式に変換
             img = Image.open(io.BytesIO(image_data))
             
-            # プロンプトを選択
-            prompt = self.prompts.get(figure_type, self.prompts['figure'])
+            # プロンプトファイルから取得
+            prompt = get_prompt(figure_type)
             
             # キャプションがあれば追加
             if caption:

@@ -19,6 +19,14 @@ import io
 from core.region_based_processor import RegionBasedProcessor, FigureRegion
 from core.practical_optimizer import PracticalConfig, ProcessingMethod, PageType
 
+# プロンプトをインポート
+try:
+    from prompts import get_prompt
+except ImportError:
+    # フォールバック用の簡易実装
+    def get_prompt(content_type: str, context: str = None) -> str:
+        return context if context else f"{content_type}を解析してください。"
+
 
 @dataclass
 class PageProcessingDecision:
@@ -359,16 +367,14 @@ class HybridProcessor(RegionBasedProcessor):
         try:
             img = Image.open(io.BytesIO(img_data))
             
-            # プロンプトの選択
-            prompts = {
-                'image': '埋め込み画像を解析してください。画像内のすべてのテキストと情報を抽出してください。',
-                'full_page': 'このページを詳細に解析してください。表、フローチャート、図形、テキストをすべて構造化して出力してください。',
-                'full_page_with_figures': 'このページの表やフローチャートを重点的に解析してください。構造と関係性を明確に説明してください。'
+            # プロンプトファイルから取得
+            type_map = {
+                'image': 'image',
+                'full_page': 'full_page',
+                'full_page_with_figures': 'hybrid_page'
             }
             
-            prompt = prompts.get(content_type, prompts['full_page'])
-            if context:
-                prompt = f"{context}\n\n{prompt}"
+            prompt = get_prompt(type_map.get(content_type, 'full_page'), context)
             
             response = self.model.generate_content([prompt, img])
             
